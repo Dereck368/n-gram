@@ -105,14 +105,22 @@ class TrigramModel(object):
         COMPLETE THIS METHOD (PART 3)
         Returns the raw (unsmoothed) trigram probability
         """
-        return self.trigramcounts[trigram] / self.bigramcounts[trigram[:2]]
+
+        if (self.bigramcounts[trigram[1:]] == 0):
+            return 0.0
+
+        return self.trigramcounts[trigram] / self.bigramcounts[trigram[1:]]
 
     def raw_bigram_probability(self, bigram):
         """
         COMPLETE THIS METHOD (PART 3)
         Returns the raw (unsmoothed) bigram probability
         """
-        return self.bigramcounts[bigram] / self.unigramcounts[bigram[:1]]
+
+        if (self.unigramcounts[bigram[0:1]] == 0):
+            return 0.0
+
+        return self.bigramcounts[bigram] / self.unigramcounts[bigram[0:1]]
     
     def raw_unigram_probability(self, unigram):
         """
@@ -141,8 +149,8 @@ class TrigramModel(object):
         lambda1 = lambda2 = lambda3 = 1/3.0
 
         smth_prob = lambda1 * self.raw_trigram_probability(trigram) 
-        smth_prob += lambda2 * self.raw_bigram_probability(trigram[:2]) 
-        smth_prob += lambda3 * self.raw_unigram_probability(trigram[:1])
+        smth_prob += lambda2 * self.raw_bigram_probability(trigram[1:]) 
+        smth_prob += lambda3 * self.raw_unigram_probability(trigram[0:1])
 
         return smth_prob
         
@@ -167,11 +175,13 @@ class TrigramModel(object):
         Returns the log probability of an entire sequence.
         """
         sum_of_log_probability = 0
+        len_of_corpus = 0
 
-        for sentence in corpus:
-            sum_of_log_probability += self.sentence_logprob(sentence)
+        for sequence in corpus:
+            len_of_corpus += len(sequence)
+            sum_of_log_probability += self.sentence_logprob(sequence)
 
-        l = sum_of_log_probability / self.total_num_of_words
+        l = sum_of_log_probability / len_of_corpus
 
         return math.pow(2,-l)
 
@@ -182,21 +192,29 @@ def essay_scoring_experiment(training_file1, training_file2, testdir1, testdir2)
         model2 = TrigramModel(training_file2)
 
         total = 0
-        correct = 0       
+        correct = 0    
  
         for f in os.listdir(testdir1):
-            pp = model1.perplexity(corpus_reader(os.path.join(testdir1, f), model1.lexicon))
-            # .. 
+            pp_high = model1.perplexity(corpus_reader(os.path.join(testdir1, f), model1.lexicon))
+            pp_low = model2.perplexity(corpus_reader(os.path.join(testdir1, f), model2.lexicon))
+            
+            if pp_high < pp_low:
+                correct += 1
+            total += 1
     
         for f in os.listdir(testdir2):
-            pp = model2.perplexity(corpus_reader(os.path.join(testdir2, f), model2.lexicon))
-            # .. 
-        
-        return 0.0
+            pp_low = model2.perplexity(corpus_reader(os.path.join(testdir2, f), model2.lexicon))
+            pp_high = model1.perplexity(corpus_reader(os.path.join(testdir2, f), model1.lexicon))
+
+            if pp_low < pp_high:
+                correct += 1
+            total += 1
+ 
+        return correct / total
 
 if __name__ == "__main__":
 
-    model = TrigramModel(sys.argv[1]) 
+    # model = TrigramModel(sys.argv[1]) 
 
     # put test code here...
     # or run the script from the command line with 
@@ -214,6 +232,5 @@ if __name__ == "__main__":
 
 
     # Essay scoring experiment: 
-    # acc = essay_scoring_experiment('train_high.txt', 'train_low.txt", "test_high", "test_low")
-    # print(acc)
-
+    acc = essay_scoring_experiment('hw1_data/ets_toefl_data/train_high.txt', 'hw1_data/ets_toefl_data/train_low.txt', 'hw1_data/ets_toefl_data/test_high', 'hw1_data/ets_toefl_data/test_low')
+    print(acc)
